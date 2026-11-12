@@ -97,7 +97,7 @@ export default function ArchivePage() {
     } catch (err) {
       console.error(err);
       setError(
-        err instanceof Error ? err.message : "Gagal memuat Memory Archive."
+        err instanceof Error ? err.message : "Failed to load Memory Archive."
       );
     } finally {
       setLoading(false);
@@ -110,7 +110,7 @@ export default function ArchivePage() {
 
   const handleDeleteSession = async (sessionId: string) => {
     const confirmed = window.confirm(
-      "Yakin ingin menghapus sesi foto ini? Semua foto dan photostrip akan ikut dihapus."
+      "Are you sure you want to delete this photo session? All photos and photostrips will be deleted."
     );
 
     if (!confirmed) return;
@@ -128,11 +128,11 @@ export default function ArchivePage() {
         setSelectedSession(null);
       }
 
-      alert("Sesi foto berhasil dihapus.");
+      alert("Photo session successfully deleted.");
     } catch (err) {
       console.error(err);
       alert(
-        err instanceof Error ? err.message : "Gagal menghapus sesi foto."
+        err instanceof Error ? err.message : "Failed to delete photo session."
       );
     } finally {
       setDeletingId(null);
@@ -144,7 +144,7 @@ export default function ArchivePage() {
       const response = await fetch(url);
 
       if (!response.ok) {
-        throw new Error("Gagal mengunduh gambar.");
+        throw new Error("Failed to download image.");
       }
 
       const blob = await response.blob();
@@ -268,7 +268,7 @@ export default function ArchivePage() {
                 onClick={loadArchive}
                 className="mt-4 text-sm underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5a1f17]"
               >
-                Coba lagi
+                Try again.
               </button>
             </div>
           )}
@@ -281,10 +281,9 @@ export default function ArchivePage() {
             >
               <Pin index={1} />
               <ImageIcon size={38} className="mx-auto mb-4 text-[#8a6a47]" />
-              <h2 className="font-serif text-2xl">Papan masih kosong</h2>
+              <h2 className="font-serif text-2xl">No Memories Yet</h2>
               <p className="mt-3 text-sm text-[#3b2a1c]/70">
-                Masuk ke booth dan ambil foto pertamamu. Hasilnya akan
-                dipasang di sini.
+                Enter the booth and capture your memories to see them here.
               </p>
               <Link
                 href="/booth"
@@ -327,7 +326,7 @@ export default function ArchivePage() {
                           >
                             <Camera size={35} />
                             <span className="mt-3 text-xs">
-                              Photostrip belum dibuat
+                              No photostrip available
                             </span>
                           </div>
                         )}
@@ -368,7 +367,7 @@ export default function ArchivePage() {
                         className="flex flex-1 items-center justify-center gap-1.5 border border-[#9b4236]/60 py-2 text-xs text-[#9b4236] transition hover:bg-[#9b4236] hover:text-[#f7ecd8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b4236] disabled:opacity-50"
                       >
                         <Trash2 size={14} />
-                        {deletingId === session.id ? "Menghapus..." : "Hapus"}
+                        {deletingId === session.id ? "Deleting.." : "Delete"}
                       </button>
                     </div>
                   </div>
@@ -475,8 +474,8 @@ export default function ArchivePage() {
             >
               <Trash2 size={15} />
               {deletingId === selectedSession.id
-                ? "Menghapus..."
-                : "Hapus koleksi ini"}
+                ? "Deleting..."
+                : "Delete collection"}
             </button>
           </div>
         </div>

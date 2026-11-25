@@ -1,10 +1,10 @@
-
 import Link from "next/link";
 import { Playfair_Display, Courier_Prime, Caveat } from "next/font/google";
 import {
   Aperture,
   ArrowUpRight,
   Camera,
+  ClipboardList,
   Clock3,
   Film,
   Images,
@@ -157,14 +157,47 @@ export default function Home() {
           filter: contrast(1.1) blur(0.2px);
         }
 
+        /* floating questionnaire button */
+        @keyframes fabFloat {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-6px); }
+        }
+
+        .fab-float { animation: fabFloat 3s ease-in-out infinite; }
+
+        @keyframes fabPing {
+          0% { transform: scale(1); opacity: 0.55; }
+          80%, 100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        .fab-ping { animation: fabPing 2.2s ease-out infinite; }
+
         @media (prefers-reduced-motion: reduce) {
-          .grain, .filmroll, .flicker, .safelight { animation: none; }
+          .grain, .filmroll, .flicker, .safelight, .fab-float, .fab-ping { animation: none; }
         }
       `}</style>
 
       {/* Film grain and vignette */}
       <div className="grain pointer-events-none fixed inset-[-50px] z-[60] opacity-[0.22] mix-blend-multiply" />
       <div className="pointer-events-none fixed inset-0 z-[55] bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(60,35,15,0.32)_100%)]" />
+
+      {/* Floating questionnaire CTA */}
+      <Link
+        href="/questionnaire"
+        aria-label="Bantu kami dengan mengisi kuesioner yuk"
+        className="fab-float group fixed bottom-5 right-5 z-[70] flex items-center md:bottom-8 md:right-8"
+      >
+        {/* Tooltip */}
+        <span className="f-hand pointer-events-none absolute right-full mr-4 w-max max-w-[210px] -rotate-2 translate-x-2 border-2 border-[#2a2119] bg-[#efe3c8] px-4 py-2.5 text-xl leading-6 text-[#2a2119] opacity-0 shadow-[4px_4px_0_#8c3a2c] transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100">
+          Bantu kami dengan mengisi kuesioner yuk ♡
+        </span>
+
+        {/* Button */}
+        <span className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#f0e5d0] bg-[#8c3a2c] text-[#f0e5d0] shadow-[4px_4px_0_#2a2119] transition-transform duration-200 group-hover:scale-110 md:h-16 md:w-16">
+          <span className="fab-ping absolute inset-0 rounded-full border-2 border-[#8c3a2c]" />
+          <ClipboardList size={26} strokeWidth={1.5} />
+        </span>
+      </Link>
 
       {/* Top announcement */}
       <div className="f-mono flex items-center justify-center gap-3 bg-[#1d1410] px-4 py-2 text-center text-[9px] font-bold uppercase tracking-[0.28em] text-[#e8d9b8]">

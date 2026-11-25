@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Aperture, Camera, Download, RotateCcw, Save } from "lucide-react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  Aperture,
+  Camera,
+  ClipboardList,
+  Download,
+  RotateCcw,
+  Save,
+} from "lucide-react";
 import {
   Playfair_Display,
   Courier_Prime,
@@ -1243,6 +1252,22 @@ export default function PhotostripGenerator({
                 Take New Photos
               </button>
 
+              {/* CTA: kuesioner */}
+              <p className="f-hand -rotate-1 pt-2 text-center text-2xl leading-7 text-[#ffb866]">
+                Bantu kami improve website ini dengan mengisi kuesioner ♡
+              </p>
+              <Link
+                href="/questionnaire"
+                aria-disabled={!isDone}
+                tabIndex={isDone ? 0 : -1}
+                className={`f-mono flex items-center justify-center gap-2 border-2 border-[#ff9a3c]/70 bg-[#ff9a3c]/10 px-6 py-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[#ffb866] shadow-[5px_5px_0_#000] transition hover:translate-x-1 hover:translate-y-1 hover:bg-[#ff9a3c]/20 hover:shadow-none ${
+                  !isDone ? "pointer-events-none opacity-40" : ""
+                }`}
+              >
+                <ClipboardList size={17} />
+                Fill Out Questionnaire
+              </Link>
+
               {hasError && (
                 <button
                   onClick={retry}
@@ -1255,8 +1280,8 @@ export default function PhotostripGenerator({
               )}
 
               <p className="f-mono text-center text-[10px] leading-5 text-[#d9c7a0]/45">
-                Save or download your strip first. Taking new photos starts a
-                fresh roll.
+                Save or download your strip first. Taking new photos or leaving
+                this page starts a fresh roll.
               </p>
 
               {status && (

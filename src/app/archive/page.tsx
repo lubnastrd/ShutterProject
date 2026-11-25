@@ -5,9 +5,13 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Camera,
+  CheckCircle2,
   Download,
+  Film,
   ImageIcon,
+  Mail,
   RefreshCw,
+  Send,
   Trash2,
   X,
 } from "lucide-react";
@@ -20,7 +24,6 @@ import {
 
 /* ---------- Tema: papan gabus + photostrip ---------- */
 
-// Tekstur gabus (noise SVG) + bercak gelap, tanpa file gambar tambahan
 const CORK_NOISE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .25  0 0 0 0 .14  0 0 0 0 .05  0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E")`;
 
 const corkStyle: React.CSSProperties = {
@@ -58,7 +61,8 @@ function Pin({ index }: { index: number }) {
       className="absolute -top-3 left-1/2 z-20 h-6 w-6 -translate-x-1/2 rounded-full"
       style={{
         background: PINS[index % PINS.length],
-        boxShadow: "3px 5px 5px rgba(0,0,0,.45), inset -1px -2px 3px rgba(0,0,0,.35)",
+        boxShadow:
+          "3px 5px 5px rgba(0,0,0,.45), inset -1px -2px 3px rgba(0,0,0,.35)",
       }}
     />
   );
@@ -77,6 +81,25 @@ function Tape({ className = "" }: { className?: string }) {
   );
 }
 
+/* ---------- Helper Konversi URL ke Base64 ---------- */
+
+async function urlToDataUrl(url: string): Promise<string> {
+  if (url.startsWith("data:")) return url;
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Gagal memuat file photostrip untuk Contact Sheet.");
+  }
+
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 /* ---------- Halaman ---------- */
 
 export default function ArchivePage() {
@@ -86,6 +109,15 @@ export default function ArchivePage() {
   const [selectedSession, setSelectedSession] =
     useState<ArchiveSession | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // State untuk modal 35mm Contact Sheet
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [contactEmail, setContactEmail] = useState("");
+  const [sendingSheet, setSendingSheet] = useState(false);
+  const [sheetStatus, setSheetStatus] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const loadArchive = async () => {
     setLoading(true);
@@ -164,12 +196,81 @@ export default function ArchivePage() {
     }
   };
 
+  // Handler kirim 35mm Contact Sheet ke n8n
+  const handleSendContactSheet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSheetStatus(null);
+
+    const availableStripUrls = sessions
+      .map((s) => s.photostrip_url)
+      .filter((url): url is string => Boolean(url))
+      .slice(0, 8); // Maksimal 8 strip sesuai batas API
+
+    if (availableStripUrls.length === 0) {
+      setSheetStatus({
+        type: "error",
+        text: "Belum ada photostrip yang tersedia untuk dicetak.",
+      });
+      return;
+    }
+
+    setSendingSheet(true);
+
+    try {
+      // Konversi semua URL gambar menjadi Base64 agar terbaca oleh node Code n8n
+      const base64Strips = await Promise.all(
+        availableStripUrls.map((url) => urlToDataUrl(url))
+      );
+
+      const rollCode = `SHUTTER-${new Date()
+        .getTime()
+        .toString()
+        .slice(-4)}`;
+
+      const response = await fetch("/api/contact-sheet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: contactEmail.trim(),
+          sessionId: rollCode,
+          strips: base64Strips,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Gagal mengirim 35mm Contact Sheet.");
+      }
+
+      setSheetStatus({
+        type: "success",
+        text:
+          data.message ||
+          "35mm Contact Sheet berhasil dikirim! Silakan cek inbox email Anda.",
+      });
+      setContactEmail("");
+    } catch (err) {
+      setSheetStatus({
+        type: "error",
+        text:
+          err instanceof Error
+            ? err.message
+            : "Terjadi kesalahan saat memproses Contact Sheet.",
+      });
+    } finally {
+      setSendingSheet(false);
+    }
+  };
+
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("id-ID", {
       day: "numeric",
       month: "long",
       year: "numeric",
     });
+
+  const validStripCount = sessions.filter((s) => Boolean(s.photostrip_url)).length;
 
   return (
     <main
@@ -212,16 +313,14 @@ export default function ArchivePage() {
             boxShadow: `${corkStyle.boxShadow}, 0 20px 50px rgba(0,0,0,.6)`,
           }}
         >
-          {/* Papan nama + tombol refresh */}
+          {/* Papan nama + tombol aksi */}
           <div className="mb-10 flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
             <div
               className="relative -rotate-1 bg-[#f4ecd8] px-6 py-4 text-[#3b2a1c] shadow-[3px_5px_10px_rgba(0,0,0,.4)]"
               style={typewriter}
             >
               <Pin index={0} />
-              <p className="mt-1 text-lg leading-tight">
-                Captured Memories
-              </p>
+              <p className="mt-1 text-lg leading-tight">Captured Memories</p>
               <p className="mt-1 text-xs text-[#3b2a1c]/65">
                 {loading
                   ? "Mencari strip..."
@@ -229,18 +328,37 @@ export default function ArchivePage() {
               </p>
             </div>
 
-            <button
-              onClick={loadArchive}
-              disabled={loading}
-              className="flex items-center gap-2 rounded-sm bg-[#2b2118]/85 px-4 py-2.5 text-sm text-[#f0e5d0] shadow-md transition hover:bg-[#2b2118] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#e8c27a] disabled:opacity-60"
-              style={typewriter}
-            >
-              <RefreshCw
-                size={15}
-                className={loading ? "animate-spin motion-reduce:animate-none" : ""}
-              />
-              Refresh
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Tombol Buka Modal 35mm Contact Sheet */}
+              {!loading && validStripCount > 0 && (
+                <button
+                  onClick={() => {
+                    setSheetStatus(null);
+                    setIsContactModalOpen(true);
+                  }}
+                  className="flex items-center gap-2 rounded-sm bg-[#9b4236] px-4 py-2.5 text-sm text-[#f7ecd8] shadow-md transition hover:bg-[#b44d40] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#e8c27a]"
+                  style={typewriter}
+                >
+                  <Film size={15} />
+                  35mm Contact Sheet
+                </button>
+              )}
+
+              <button
+                onClick={loadArchive}
+                disabled={loading}
+                className="flex items-center gap-2 rounded-sm bg-[#2b2118]/85 px-4 py-2.5 text-sm text-[#f0e5d0] shadow-md transition hover:bg-[#2b2118] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#e8c27a] disabled:opacity-60"
+                style={typewriter}
+              >
+                <RefreshCw
+                  size={15}
+                  className={
+                    loading ? "animate-spin motion-reduce:animate-none" : ""
+                  }
+                />
+                Refresh
+              </button>
+            </div>
           </div>
 
           {/* LOADING */}
@@ -332,15 +450,13 @@ export default function ArchivePage() {
                         )}
                       </div>
 
-                      <div
-                        className="mt-3 text-[#3b2a1c]"
-                        style={typewriter}
-                      >
+                      <div className="mt-3 text-[#3b2a1c]" style={typewriter}>
                         <h3 className="truncate text-lg leading-tight">
                           {session.title || "Shutter Memories"}
                         </h3>
                         <p className="mt-1 text-xs text-[#3b2a1c]/65">
-                          {formatDate(session.created_at)}, {session.photos.length} foto
+                          {formatDate(session.created_at)},{" "}
+                          {session.photos.length} foto
                         </p>
                       </div>
                     </button>
@@ -384,6 +500,100 @@ export default function ArchivePage() {
           </p>
         </footer>
       </div>
+
+      {/* MODAL 35MM CONTACT SHEET */}
+      {isContactModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Send 35mm Contact Sheet"
+        >
+          <div
+            className="relative w-full max-w-md bg-[#f4ecd8] p-6 pt-8 text-[#3b2a1c] shadow-[6px_14px_28px_rgba(0,0,0,.65)] sm:p-8"
+            style={typewriter}
+          >
+            <Pin index={2} />
+
+            <button
+              onClick={() => setIsContactModalOpen(false)}
+              disabled={sendingSheet}
+              className="absolute right-3 top-3 p-1.5 text-[#3b2a1c]/60 transition hover:text-[#3b2a1c]"
+              aria-label="Close modal"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="mb-1 flex items-center gap-2 text-xs uppercase tracking-widest text-[#9b4236]">
+              <Film size={14} />
+              <span>Darkroom Delivery</span>
+            </div>
+
+            <h2 className="font-serif text-2xl text-[#2b2118]">
+              35mm Contact Sheet
+            </h2>
+
+            <p className="mt-2 text-xs leading-relaxed text-[#3b2a1c]/80">
+              Kirim seluruh arsip photostrip di papan ini (
+              <strong>{Math.min(validStripCount, 8)} strip</strong>) dalam
+              satu paket arsip digital 35mm langsung ke email Anda.
+            </p>
+
+            <form onSubmit={handleSendContactSheet} className="mt-5 space-y-4">
+              <div>
+                <label
+                  htmlFor="contact-sheet-email"
+                  className="block text-xs uppercase tracking-wider text-[#3b2a1c]/80"
+                >
+                  Email Tujuan
+                </label>
+                <div className="relative mt-1.5">
+                  <Mail
+                    size={15}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#3b2a1c]/50"
+                  />
+                  <input
+                    id="contact-sheet-email"
+                    type="email"
+                    required
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="nama@email.com"
+                    disabled={sendingSheet}
+                    className="w-full border border-[#3b2a1c]/30 bg-[#faf6ee] py-2.5 pl-9 pr-3 text-sm text-[#2b2118] placeholder:text-[#3b2a1c]/40 focus:border-[#9b4236] focus:outline-none disabled:opacity-60"
+                  />
+                </div>
+              </div>
+
+              {sheetStatus && (
+                <div
+                  className={`flex items-start gap-2 border p-3 text-xs leading-relaxed ${
+                    sheetStatus.type === "success"
+                      ? "border-[#2f8f74]/40 bg-[#e4f3ee] text-[#134a3a]"
+                      : "border-[#9b4236]/40 bg-[#f6e3dc] text-[#5a1f17]"
+                  }`}
+                >
+                  {sheetStatus.type === "success" && (
+                    <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+                  )}
+                  <span>{sheetStatus.text}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={sendingSheet}
+                className="flex w-full items-center justify-center gap-2 bg-[#3b2a1c] py-3 text-xs uppercase tracking-widest text-[#f7ecd8] shadow transition hover:bg-[#9b4236] disabled:opacity-60"
+              >
+                <Send size={14} />
+                {sendingSheet
+                  ? "Developing & Sending..."
+                  : "Send Contact Sheet"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* DETAIL SESI */}
       {selectedSession && (
